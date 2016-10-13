@@ -8,8 +8,10 @@ void printValues() {
 	std::cout << "non-dup count " << dummydupCounter.GetNonDupCount() << std::endl;
 	for(auto str : dummydupCounter.GetInvalidLines())
 		std::cout << "Invalid Lines " << str.c_str() << std::endl;
+	std::cout << "frequent group ";
 	for (auto val : dummydupCounter.GetFrequentGroup())
-		std::cout << "frequent group " << val << std::endl;
+		std::cout << val << ",";
+	std::cout << std::endl;
 }
 
 int main() {
