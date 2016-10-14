@@ -1,7 +1,7 @@
 #include <sstream>
 #include <utility>
 #include <iterator>
-
+#include <algorithm>
 #include "..\interface\dupcounter.h"
 
 bool dupcounter::AddLine(const std::string& oneLine)
@@ -13,17 +13,25 @@ bool dupcounter::AddLine(const std::string& oneLine)
 	int count = 0;
 	if (!GetLineAsIntMap(ipMap, iplist , total , count , oneLine))
 	{
+		std::lock_guard<std::mutex> lock(inValidIpMutex);
 		invalidIps.push_back(oneLine);
+		invalidIpsDirty = true;
 		return false;
-	}
+	}	
+
+	bucketMutex.lock();
 	auto it = std::find(buckets.begin(), buckets.end(), bucket(total, count));
 	if (it == buckets.end())
 	{
 		buckets.push_back(bucket(total, count));
 		it = std::find(buckets.begin(), buckets.end(), bucket(total, count));
 	}
+	bucketMutex.unlock();
 
+	groupMutex.lock();
 	int grpcount = (*it).AddGroup(ipMap);
+	groupMutex.unlock();
+
 	if (grpcount == 1){
 		nondupgroups += 1;	
 		retValue = false;
@@ -36,6 +44,7 @@ bool dupcounter::AddLine(const std::string& oneLine)
 		dupgroups += 1;
 	}
 	if (grpcount > freqGroupCount) {
+		std::sort(iplist.begin(), iplist.end());
 		freqGroup = iplist;
 		freqGroupCount = grpcount;
 	}
@@ -60,6 +69,11 @@ const std::vector<int>& dupcounter::GetFrequentGroup() const
 
 const std::vector<std::string>& dupcounter::GetInvalidLines() const
 {
+	std::lock_guard<std::mutex> lock(inValidIpMutex);
+	if (invalidIpsDirty){
+		std::sort(invalidIps.begin(), invalidIps.end());
+		invalidIpsDirty = false;
+	}
 	return invalidIps;
 }
 
@@ -72,6 +86,7 @@ bool dupcounter::GetLineAsIntMap(std::map<int, int>& ipMap, std::vector<int>& ip
 		int c = this_line.peek();
 		if (c == ',' || c == ' ') {
 			this_line.ignore(1);
+			continue;
 		}
 		else if (c < '0' || c > '9'){			
 			return false;
@@ -85,6 +100,8 @@ bool dupcounter::GetLineAsIntMap(std::map<int, int>& ipMap, std::vector<int>& ip
 			else {
 				ipMap[i] = 1;
 			}
+			count += 1;
+			total += i;
 		}
 	}
 	return true;

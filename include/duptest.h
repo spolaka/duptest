@@ -1,6 +1,7 @@
 #pragma once
 #include <map>
 #include <vector>
+#include <mutex>
 
 class dupcheck {
 public :
@@ -13,13 +14,13 @@ private:
 };
 
 class bucket {
-public :	
+public :		
 	bucket(int tot, int cnt);
 	bool operator ==(bucket const &rhs) const;
 	int AddGroup(const std::map<int, int>& ipgroup);
 private:
 	int total;
 	int count;
-	std::vector<dupcheck> dupchecks;
+	std::vector<dupcheck> dupchecks;	
 };
 
